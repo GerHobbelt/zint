@@ -60,6 +60,7 @@ struct zint_render {
 };
 
 struct zint_symbol {
+    char *output_buffer;
 	int symbology;
 	int height;
 	int whitespace_width;

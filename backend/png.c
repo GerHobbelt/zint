@@ -607,21 +607,25 @@ int maxi_png_plot(struct zint_symbol *symbol, int rotate_angle, int data_type)
 	int i, row, column, xposn, yposn;
 	int image_height, image_width;
 	char *pixelbuf;
-	int error_number;
+	int error_number = 0;
 	int xoffset, yoffset;
 
-	xoffset = symbol->border_width + symbol->whitespace_width;
-	yoffset = symbol->border_width;
-	image_width = 300 + (2 * xoffset * 2);
-	image_height = 300 + (2 * yoffset * 2);
-
-	if (!(pixelbuf = (char *) malloc(image_width * image_height))) {
-		printf("Insifficient memory for pixel buffer");
-		return ZERROR_ENCODING_PROBLEM;
+	if (symbol->output_buffer) {
+		pixelbuf = symbol->output_buffer;
 	} else {
-		for(i = 0; i < (image_width * image_height); i++) {
-			*(pixelbuf + i) = '0';
+		xoffset = symbol->border_width + symbol->whitespace_width;
+		yoffset = symbol->border_width;
+		image_width = 300 + (2 * xoffset * 2);
+		image_height = 300 + (2 * yoffset * 2);
+		pixelbuf = (char *) malloc(image_width * image_height);
+		if (!pixelbuf) {
+			pixelbuf = (char *) malloc(image_width * image_height);
+			return ZERROR_ENCODING_PROBLEM;
 		}
+	}
+
+	for(i = 0; i < (image_width * image_height); i++) {
+		*(pixelbuf + i) = '0';
 	}
 
 	draw_bullseye(pixelbuf, image_width, (2 * xoffset), (2 * yoffset));
@@ -655,8 +659,10 @@ int maxi_png_plot(struct zint_symbol *symbol, int rotate_angle, int data_type)
 		draw_bar(pixelbuf, 300 + ((symbol->border_width + symbol->whitespace_width + symbol->whitespace_width) * 2), symbol->border_width * 2, 0, image_height, image_width, image_height);
 	}
 
-	error_number=png_to_file(symbol, image_height, image_width, pixelbuf, rotate_angle, data_type);
-	free(pixelbuf);
+	if (!symbol->output_buffer) {
+		error_number=png_to_file(symbol, image_height, image_width, pixelbuf, rotate_angle, data_type);
+		free(pixelbuf);
+	}
 	return error_number;
 }
 
@@ -701,7 +707,7 @@ int png_plot(struct zint_symbol *symbol, int rotate_angle, int data_type)
 	int addon_latch = 0, smalltext = 0;
 	int this_row, block_width, plot_height, plot_yposn, textpos;
 	float row_height, row_posn;
-	int error_number;
+	int error_number = 0;
 	int default_text_posn;
 	int next_yposn;
 	uint8_t local_text[ustrlen(symbol->text) + 1];
@@ -802,14 +808,22 @@ int png_plot(struct zint_symbol *symbol, int rotate_angle, int data_type)
 	yoffset = symbol->border_width;
 	image_width = 2 * (symbol->width + xoffset + xoffset);
 	image_height = 2 * (symbol->height + textoffset + yoffset + yoffset);
-
-	if (!(pixelbuf = (char *) malloc(image_width * image_height))) {
-		printf("Insufficient memory for pixel buffer");
-		return ZERROR_ENCODING_PROBLEM;
+	if (symbol->output_buffer) {
+		pixelbuf = symbol->output_buffer;
 	} else {
-		for(i = 0; i < (image_width * image_height); i++) {
-			*(pixelbuf + i) = '0';
+		xoffset = symbol->border_width + symbol->whitespace_width;
+		yoffset = symbol->border_width;
+		image_width = 2 * (symbol->width + xoffset + xoffset);
+		image_height = 2 * (symbol->height + textoffset + yoffset + yoffset);
+		pixelbuf = (char *) malloc(image_width * image_height);
+		if (!pixelbuf) {
+			printf("Insufficient memory for pixel buffer");
+			return ZERROR_ENCODING_PROBLEM;
 		}
+	}
+
+	for(i = 0; i < (image_width * image_height); i++) {
+		*(pixelbuf + i) = '0';
 	}
 
 	if(((symbol->output_options & BARCODE_BOX) != 0) || ((symbol->output_options & BARCODE_BIND) != 0)) {
@@ -1086,8 +1100,10 @@ int png_plot(struct zint_symbol *symbol, int rotate_angle, int data_type)
 		draw_string(pixelbuf, (char*)local_text, textpos, default_text_posn, smalltext, image_width, image_height);
 	}
 
-	error_number=png_to_file(symbol, image_height, image_width, pixelbuf, rotate_angle, data_type);
-	free(pixelbuf);
+	if (!symbol->output_buffer) {
+		error_number=png_to_file(symbol, image_height, image_width, pixelbuf, rotate_angle, data_type);
+		free(pixelbuf);
+	}
 	return error_number;
 }
 
@@ -1099,7 +1115,6 @@ int png_handle(struct zint_symbol *symbol, int rotate_angle)
 	if(symbol->symbology == BARCODE_MAXICODE) {
 		error = maxi_png_plot(symbol, rotate_angle, PNG_DATA);
 	} else {
-
 		error = png_plot(symbol, rotate_angle, PNG_DATA);
 	}
 
